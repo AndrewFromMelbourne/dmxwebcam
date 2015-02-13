@@ -58,8 +58,8 @@
 //-------------------------------------------------------------------------
 
 #define DEFAULT_FPS 30
-#define DEFAULT_WIDTH 320
-#define DEFAULT_HEIGHT 240
+#define DEFAULT_WIDTH 640
+#define DEFAULT_HEIGHT 480
 #define NUMBER_OF_BUFFERS_TO_REQUEST 4
 
 //-------------------------------------------------------------------------
@@ -87,8 +87,8 @@ printUsage(
     fprintf(fp, "\n");
     fprintf(fp, "    --daemon - start in the background as a daemon\n");
     fprintf(fp, "    --fps <fps> - set desired frames per second");
-    fprintf(fp, "    --fullscreen - show full screen\n");
     fprintf(fp, " (default %d frames per second)\n", DEFAULT_FPS);
+    fprintf(fp, "    --fullscreen - show full screen\n");
     fprintf(fp, "    --pidfile <pidfile> - create and lock PID file");
     fprintf(fp, " (if being run as a daemon)\n");
     fprintf(fp, "    --sample <value> - only display every value frame)\n");
