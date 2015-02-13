@@ -371,17 +371,6 @@ main(
 
     //---------------------------------------------------------------------
 
-    if (access("/dev/mem", R_OK | W_OK) == -1)
-    {
-        perrorLog(isDaemon,
-                  program,
-                 "read and write access to /dev/mem required");
-
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
-    }
-
-    //---------------------------------------------------------------------
-
     if (signal(SIGINT, signalHandler) == SIG_ERR)
     {
         perrorLog(isDaemon, program, "installing SIGINT signal handler");
