@@ -2,7 +2,7 @@ OBJS=dmxwebcam.o backgroundLayer.o syslogUtilities.o yuv420Image.o \
 	 yuv420ImageLayer.o
 BIN=dmxwebcam
 
-CFLAGS+=-Wall -g -O3 -I../common
+CFLAGS+=-Wall -g -O3
 LDFLAGS+=-L/opt/vc/lib/ -lbcm_host -lbsd
 
 INCLUDES+=-I/opt/vc/include/ -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux
