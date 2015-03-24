@@ -57,6 +57,8 @@
 
 //-------------------------------------------------------------------------
 
+#define DEFAULT_VIDEO_DEVICE "/dev/video0"
+#define DEFAULT_DISPLAY_NUMBER 0
 #define DEFAULT_FPS 30
 #define DEFAULT_WIDTH 640
 #define DEFAULT_HEIGHT 480
@@ -86,6 +88,8 @@ printUsage(
     fprintf(fp, "Usage: %s <options>\n", name);
     fprintf(fp, "\n");
     fprintf(fp, "    --daemon - start in the background as a daemon\n");
+    fprintf(fp, "    --display <number> - Raspberry Pi display number");
+    fprintf(fp, " (default %d)\n", DEFAULT_DISPLAY_NUMBER);
     fprintf(fp, "    --fps <fps> - set desired frames per second");
     fprintf(fp, " (default %d frames per second)\n", DEFAULT_FPS);
     fprintf(fp, "    --fullscreen - show full screen\n");
@@ -96,6 +100,8 @@ printUsage(
     fprintf(fp, " (default %d)\n", DEFAULT_WIDTH);
     fprintf(fp, "    --height <height> - set video height");
     fprintf(fp, " (default %d)\n", DEFAULT_HEIGHT);
+    fprintf(fp, "    --videodevice <device> - video device for webcam");
+    fprintf(fp, " (default %s)\n", DEFAULT_VIDEO_DEVICE);
     fprintf(fp, "    --help - print usage and exit\n");
     fprintf(fp, "\n");
 }
@@ -233,25 +239,35 @@ main(
 
     int width = DEFAULT_WIDTH;
     int height = DEFAULT_HEIGHT;
+
     int fps = DEFAULT_FPS;
     suseconds_t frameDuration =  1000000 / fps;
+
     uint8_t sample = 1;
+
     bool isDaemon =  false;
+    const char *pidfile = NULL;
+
     bool fullscreen = false;
-    char *pidfile = NULL;
+
+    const char *vdevice = DEFAULT_VIDEO_DEVICE;
+
+    uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
 
     //---------------------------------------------------------------------
 
-    static const char *sopts = "df:FhH:p:s:W:";
+    static const char *sopts = "dD:f:FhH:p:s:v:W:";
     static struct option lopts[] = 
     {
         { "daemon", no_argument, NULL, 'd' },
+        { "display", required_argument, NULL, 'D' },
         { "fps", required_argument, NULL, 'f' },
         { "fullscreen", no_argument, NULL, 'F' },
         { "height", required_argument, NULL, 'H' },
         { "help", no_argument, NULL, 'h' },
         { "pidfile", required_argument, NULL, 'p' },
         { "sample", required_argument, NULL, 's' },
+        { "videodevice", required_argument, NULL, 'v' },
         { "width", required_argument, NULL, 'W' },
         { NULL, no_argument, NULL, 0 }
     };
@@ -309,6 +325,18 @@ main(
             {
                 sample = 1;
             }
+
+            break;
+
+        case 'v':
+
+            vdevice = optarg;
+
+            break;
+
+        case 'D':
+
+            displayNumber = atoi(optarg);
 
             break;
 
@@ -391,7 +419,8 @@ main(
 
     bcm_host_init();
 
-    DISPMANX_DISPLAY_HANDLE_T display = vc_dispmanx_display_open(0);
+    DISPMANX_DISPLAY_HANDLE_T display
+        = vc_dispmanx_display_open(displayNumber);
 
     if (display == 0)
     {
@@ -417,7 +446,6 @@ main(
 
     //---------------------------------------------------------------------
 
-    char *vdevice = "/dev/video0";
     int vfd = open(vdevice, O_RDWR);
 
     if (vfd == -1)
