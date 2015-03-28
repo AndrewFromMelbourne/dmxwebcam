@@ -47,8 +47,8 @@ initBackgroundLayer(
 
     //---------------------------------------------------------------------
 
-    VC_RECT_T dst_rect;
-    vc_dispmanx_rect_set(&dst_rect, 0, 0, 1, 1);
+    VC_RECT_T bmp_rect;
+    vc_dispmanx_rect_set(&bmp_rect, 0, 0, 1, 1);
 
     bg->layer = layer;
 
@@ -56,7 +56,7 @@ initBackgroundLayer(
                                              type,
                                              sizeof(colour),
                                              &colour,
-                                             &dst_rect);
+                                             &bmp_rect);
     assert(result == 0);
 }
 

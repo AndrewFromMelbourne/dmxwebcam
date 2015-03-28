@@ -61,27 +61,35 @@ createResourceYUV420ImageLayer(
 
     il->layer = layer;
 
-    il->resource =
+    il->frontResource =
         vc_dispmanx_resource_create(
             VC_IMAGE_YUV420,
             il->image.width | (il->image.pitch << 16),
             il->image.height | (il->image.alignedHeight << 16),
             &vc_image_ptr);
-    assert(il->resource != 0);
+    assert(il->frontResource != 0);
+
+    il->backResource =
+        vc_dispmanx_resource_create(
+            VC_IMAGE_YUV420,
+            il->image.width | (il->image.pitch << 16),
+            il->image.height | (il->image.alignedHeight << 16),
+            &vc_image_ptr);
+    assert(il->backResource != 0);
 
     //---------------------------------------------------------------------
 
-    vc_dispmanx_rect_set(&(il->dstRect),
+    vc_dispmanx_rect_set(&(il->bmpRect),
                          0,
                          0,
                          il->image.width,
-                         3 * ALIGN_TO_16(il->image.height) / 2);
+                         (3 * il->image.alignedHeight) / 2);
 
-    result = vc_dispmanx_resource_write_data(il->resource,
+    result = vc_dispmanx_resource_write_data(il->frontResource,
                                              VC_IMAGE_YUV420,
                                              il->image.pitch,
                                              il->image.buffer,
-                                             &(il->dstRect));
+                                             &(il->bmpRect));
     assert(result == 0);
 }
 
@@ -194,19 +202,13 @@ addElementYUV420ImageLayer(
                                 display,
                                 il->layer,
                                 &(il->dstRect),
-                                il->resource,
+                                il->frontResource,
                                 &(il->srcRect),
                                 DISPMANX_PROTECTION_NONE,
                                 &alpha,
                                 NULL, // clamp
                                 DISPMANX_NO_ROTATE);
     assert(il->element != 0);
-
-    vc_dispmanx_rect_set(&(il->dstRect),
-                         0,
-                         0,
-                         il->image.width,
-                         3 * ALIGN_TO_16(il->image.height) / 2);
 }
 
 //-------------------------------------------------------------------------
@@ -216,18 +218,21 @@ changeSourceYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il,
     DISPMANX_UPDATE_HANDLE_T update)
 {
-    int result = vc_dispmanx_resource_write_data(il->resource,
+    int result = vc_dispmanx_resource_write_data(il->backResource,
                                                  VC_IMAGE_YUV420,
                                                  il->image.pitch,
                                                  il->image.buffer,
-                                                 &(il->dstRect));
+                                                 &(il->bmpRect));
     assert(result == 0);
 
     result = vc_dispmanx_element_change_source(update,
                                                il->element,
-                                               il->resource);
+                                               il->backResource);
     assert(result == 0);
 
+    DISPMANX_RESOURCE_HANDLE_T tmp = il->frontResource;
+    il->frontResource = il->backResource;
+    il->backResource = tmp;
 }
 
 //-------------------------------------------------------------------------
@@ -248,11 +253,11 @@ void
 changeSourceAndUpdateYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il)
 {
-    int result = vc_dispmanx_resource_write_data(il->resource,
+    int result = vc_dispmanx_resource_write_data(il->backResource,
                                                  VC_IMAGE_YUV420,
                                                  il->image.pitch,
                                                  il->image.buffer,
-                                                 &(il->dstRect));
+                                                 &(il->bmpRect));
     assert(result == 0);
 
     DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
@@ -260,12 +265,15 @@ changeSourceAndUpdateYUV420ImageLayer(
 
     result = vc_dispmanx_element_change_source(update,
                                                il->element,
-                                               il->resource);
+                                               il->backResource);
     assert(result == 0);
 
     result = vc_dispmanx_update_submit_sync(update);
     assert(result == 0);
 
+    DISPMANX_RESOURCE_HANDLE_T tmp = il->frontResource;
+    il->frontResource = il->backResource;
+    il->backResource = tmp;
 }
 
 //-------------------------------------------------------------------------
@@ -285,7 +293,10 @@ destroyYUV420ImageLayer(
 
     //---------------------------------------------------------------------
 
-    result = vc_dispmanx_resource_delete(il->resource);
+    result = vc_dispmanx_resource_delete(il->frontResource);
+    assert(result == 0);
+
+    result = vc_dispmanx_resource_delete(il->backResource);
     assert(result == 0);
 
     //---------------------------------------------------------------------

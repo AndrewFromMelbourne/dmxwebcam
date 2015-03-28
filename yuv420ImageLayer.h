@@ -37,10 +37,12 @@
 typedef struct
 {
     YUV420_IMAGE_T image;
+    VC_RECT_T bmpRect;
     VC_RECT_T srcRect;
     VC_RECT_T dstRect;
     int32_t layer;
-    DISPMANX_RESOURCE_HANDLE_T resource;
+    DISPMANX_RESOURCE_HANDLE_T frontResource;
+    DISPMANX_RESOURCE_HANDLE_T backResource;
     DISPMANX_ELEMENT_HANDLE_T element;
 } YUV420_IMAGE_LAYER_T;
 
