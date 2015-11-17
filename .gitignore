@@ -28,4 +28,6 @@
 *.x86_64
 *.hex
 
-dmxwebcam
+# CMake build directory
+
+build

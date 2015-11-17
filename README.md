@@ -15,3 +15,11 @@
 	--videodevice <device> - video device for webcam (default /dev/video0)
 	--help - print usage and exit
 
+# build
+
+	cd dmxwebcam
+	mkdir build
+	cd build
+	cmake ..
+	make
+
