@@ -57,7 +57,6 @@ createResourceYUV420ImageLayer(
     int32_t layer)
 {
     uint32_t vc_image_ptr;
-    int result = 0;
 
     il->layer = layer;
 
@@ -85,12 +84,11 @@ createResourceYUV420ImageLayer(
                          il->image.width,
                          (3 * il->image.alignedHeight) / 2);
 
-    result = vc_dispmanx_resource_write_data(il->frontResource,
-                                             VC_IMAGE_YUV420,
-                                             il->image.pitch,
-                                             il->image.buffer,
-                                             &(il->bmpRect));
-    assert(result == 0);
+    vc_dispmanx_resource_write_data(il->frontResource,
+                                    VC_IMAGE_YUV420,
+                                    il->image.pitch,
+                                    il->image.buffer,
+                                    &(il->bmpRect));
 }
 
 //-------------------------------------------------------------------------
@@ -218,17 +216,15 @@ changeSourceYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il,
     DISPMANX_UPDATE_HANDLE_T update)
 {
-    int result = vc_dispmanx_resource_write_data(il->backResource,
-                                                 VC_IMAGE_YUV420,
-                                                 il->image.pitch,
-                                                 il->image.buffer,
-                                                 &(il->bmpRect));
-    assert(result == 0);
+    vc_dispmanx_resource_write_data(il->backResource,
+                                    VC_IMAGE_YUV420,
+                                    il->image.pitch,
+                                    il->image.buffer,
+                                    &(il->bmpRect));
 
-    result = vc_dispmanx_element_change_source(update,
-                                               il->element,
-                                               il->backResource);
-    assert(result == 0);
+    vc_dispmanx_element_change_source(update,
+                                      il->element,
+                                      il->backResource);
 
     DISPMANX_RESOURCE_HANDLE_T tmp = il->frontResource;
     il->frontResource = il->backResource;
@@ -253,23 +249,19 @@ void
 changeSourceAndUpdateYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il)
 {
-    int result = vc_dispmanx_resource_write_data(il->backResource,
-                                                 VC_IMAGE_YUV420,
-                                                 il->image.pitch,
-                                                 il->image.buffer,
-                                                 &(il->bmpRect));
-    assert(result == 0);
+    vc_dispmanx_resource_write_data(il->backResource,
+                                    VC_IMAGE_YUV420,
+                                    il->image.pitch,
+                                    il->image.buffer,
+                                    &(il->bmpRect));
 
     DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
-    assert(update != 0);
 
-    result = vc_dispmanx_element_change_source(update,
-                                               il->element,
-                                               il->backResource);
-    assert(result == 0);
+    vc_dispmanx_element_change_source(update,
+                                      il->element,
+                                      il->backResource);
 
-    result = vc_dispmanx_update_submit_sync(update);
-    assert(result == 0);
+    vc_dispmanx_update_submit_sync(update);
 
     DISPMANX_RESOURCE_HANDLE_T tmp = il->frontResource;
     il->frontResource = il->backResource;
@@ -282,22 +274,14 @@ void
 destroyYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il)
 {
-    int result = 0;
-
     DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
-    assert(update != 0);
-    result = vc_dispmanx_element_remove(update, il->element);
-    assert(result == 0);
-    result = vc_dispmanx_update_submit_sync(update);
-    assert(result == 0);
+    vc_dispmanx_element_remove(update, il->element);
+    vc_dispmanx_update_submit_sync(update);
 
     //---------------------------------------------------------------------
 
-    result = vc_dispmanx_resource_delete(il->frontResource);
-    assert(result == 0);
-
-    result = vc_dispmanx_resource_delete(il->backResource);
-    assert(result == 0);
+    vc_dispmanx_resource_delete(il->frontResource);
+    vc_dispmanx_resource_delete(il->backResource);
 
     //---------------------------------------------------------------------
 

@@ -33,8 +33,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#include "bcm_host.h"
     
 //-------------------------------------------------------------------------
 

@@ -38,7 +38,6 @@ initBackgroundLayer(
     uint16_t colour,
     int32_t layer)
 {
-    int result = 0;
     VC_IMAGE_TYPE_T type = VC_IMAGE_RGBA16;
     uint32_t vc_image_ptr;
 
@@ -52,12 +51,11 @@ initBackgroundLayer(
 
     bg->layer = layer;
 
-    result = vc_dispmanx_resource_write_data(bg->resource,
-                                             type,
-                                             sizeof(colour),
-                                             &colour,
-                                             &bmp_rect);
-    assert(result == 0);
+    vc_dispmanx_resource_write_data(bg->resource,
+                                    type,
+                                    sizeof(colour),
+                                    &colour,
+                                    &bmp_rect);
 }
 
 //-------------------------------------------------------------------------
@@ -103,18 +101,10 @@ void
 destroyBackgroundLayer(
     BACKGROUND_LAYER_T *bg)
 {
-    int result = 0;
-
     DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
-    assert(update != 0);
 
-    result = vc_dispmanx_element_remove(update, bg->element);
-    assert(result == 0);
-
-    result = vc_dispmanx_update_submit_sync(update);
-    assert(result == 0);
-
-    result = vc_dispmanx_resource_delete(bg->resource);
-    assert(result == 0);
+    vc_dispmanx_element_remove(update, bg->element);
+    vc_dispmanx_update_submit_sync(update);
+    vc_dispmanx_resource_delete(bg->resource);
 }
 

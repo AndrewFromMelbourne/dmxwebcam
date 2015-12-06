@@ -30,7 +30,10 @@
 
 //-------------------------------------------------------------------------
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #include "bcm_host.h"
+#pragma GCC diagnostic pop
 
 //-------------------------------------------------------------------------
 
