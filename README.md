@@ -17,6 +17,7 @@
 
 # build
 
+	sudo apt-get install libbsd-dev
 	cd dmxwebcam
 	mkdir build
 	cd build
