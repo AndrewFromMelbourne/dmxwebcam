@@ -181,6 +181,30 @@ addElementYUV420ImageLayerFullScreen(
 //-------------------------------------------------------------------------
 
 void
+addElementYUV420ImageLayerStretch(
+    YUV420_IMAGE_LAYER_T *il,
+    DISPMANX_MODEINFO_T *info,
+    DISPMANX_DISPLAY_HANDLE_T display,
+    DISPMANX_UPDATE_HANDLE_T update)
+{
+    vc_dispmanx_rect_set(&(il->srcRect),
+                         0 << 16,
+                         0 << 16,
+                         il->image.width << 16,
+                         il->image.height << 16);
+
+    vc_dispmanx_rect_set(&(il->dstRect),
+		         0,
+			 0,
+                         info->width,
+                         info->height);
+
+    addElementYUV420ImageLayer(il, display, update);
+}
+
+//-------------------------------------------------------------------------
+
+void
 addElementYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il,
     DISPMANX_DISPLAY_HANDLE_T display,

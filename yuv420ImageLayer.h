@@ -85,6 +85,13 @@ addElementYUV420ImageLayerFullScreen(
     DISPMANX_UPDATE_HANDLE_T update);
 
 void
+addElementYUV420ImageLayerStretch(
+    YUV420_IMAGE_LAYER_T *il,
+    DISPMANX_MODEINFO_T *info,
+    DISPMANX_DISPLAY_HANDLE_T display,
+    DISPMANX_UPDATE_HANDLE_T update);
+
+void
 addElementYUV420ImageLayer(
     YUV420_IMAGE_LAYER_T *il,
     DISPMANX_DISPLAY_HANDLE_T display,
