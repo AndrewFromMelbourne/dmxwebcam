@@ -273,7 +273,7 @@ main(
         { "help", no_argument, NULL, 'h' },
         { "pidfile", required_argument, NULL, 'p' },
         { "sample", required_argument, NULL, 's' },
-        { "stretch", required_argument, NULL, 'r' },
+        { "stretch", no_argument, NULL, 'S' },
         { "videodevice", required_argument, NULL, 'v' },
         { "width", required_argument, NULL, 'W' },
         { NULL, no_argument, NULL, 0 }
@@ -335,7 +335,7 @@ main(
 
             break;
 
-	case 'r':
+        case 'S':
 
             stretch = true;
 
