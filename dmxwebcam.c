@@ -96,6 +96,7 @@ printUsage(
     fprintf(fp, "    --fps <fps> - set desired frames per second");
     fprintf(fp, " (default %d frames per second)\n", DEFAULT_FPS);
     fprintf(fp, "    --fullscreen - show full screen\n");
+    fprintf(fp, "    --stretch - show full screen and stretch\n");
     fprintf(fp, "    --pidfile <pidfile> - create and lock PID file");
     fprintf(fp, " (if being run as a daemon)\n");
     fprintf(fp, "    --sample <value> - only display every value frame)\n");
@@ -253,6 +254,8 @@ main(
 
     bool fullscreen = false;
 
+    bool stretch = false;
+
     const char *vdevice = DEFAULT_VIDEO_DEVICE;
 
     uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
@@ -270,6 +273,7 @@ main(
         { "help", no_argument, NULL, 'h' },
         { "pidfile", required_argument, NULL, 'p' },
         { "sample", required_argument, NULL, 's' },
+        { "stretch", no_argument, NULL, 'S' },
         { "videodevice", required_argument, NULL, 'v' },
         { "width", required_argument, NULL, 'W' },
         { NULL, no_argument, NULL, 0 }
@@ -328,6 +332,12 @@ main(
             {
                 sample = 1;
             }
+
+            break;
+
+        case 'S':
+
+            stretch = true;
 
             break;
 
@@ -496,6 +506,11 @@ main(
                                              display,
                                              update);
     }
+    else if (stretch)
+        addElementYUV420ImageLayerStretch(&imageLayer,
+                                          &info,
+                                          display,
+                                          update);
     else
     {
         addElementYUV420ImageLayerCentered(&imageLayer,
