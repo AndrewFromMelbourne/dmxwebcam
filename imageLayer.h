@@ -2,7 +2,7 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (c) 2015 Andrew Duncan
+// Copyright (c) 2020 Andrew Duncan
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the
@@ -25,10 +25,10 @@
 //
 //-------------------------------------------------------------------------
 
-#ifndef YUV420_IMAGE_LAYER_H
-#define YUV420_IMAGE_LAYER_H
+#ifndef IMAGE_LAYER_H
+#define IMAGE_LAYER_H
 
-#include "yuv420Image.h"
+#include "image.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -39,7 +39,7 @@
 
 typedef struct
 {
-    YUV420_IMAGE_T image;
+    IMAGE_T image;
     VC_RECT_T bmpRect;
     VC_RECT_T srcRect;
     VC_RECT_T dstRect;
@@ -47,53 +47,58 @@ typedef struct
     DISPMANX_RESOURCE_HANDLE_T frontResource;
     DISPMANX_RESOURCE_HANDLE_T backResource;
     DISPMANX_ELEMENT_HANDLE_T element;
-} YUV420_IMAGE_LAYER_T;
+} IMAGE_LAYER_T;
 
 //-------------------------------------------------------------------------
 
-void
-initYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+bool
+initImageLayer(
+    IMAGE_LAYER_T *il,
     int32_t width,
-    int32_t height);
+    int32_t height,
+    VC_IMAGE_TYPE_T type);
+
+VC_IMAGE_TYPE_T
+imageLayerType(
+    IMAGE_LAYER_T *il);
 
 void
-createResourceYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+createResourceImageLayer(
+    IMAGE_LAYER_T *il,
     int32_t layer);
 
 void
-addElementYUV420ImageLayerOffset(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerOffset(
+    IMAGE_LAYER_T *il,
     int32_t xOffset,
     int32_t yOffset,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update);
 
 void
-addElementYUV420ImageLayerCentered(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerCentered(
+    IMAGE_LAYER_T *il,
     DISPMANX_MODEINFO_T *info,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update);
 
 void
-addElementYUV420ImageLayerFullScreen(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerFullScreen(
+    IMAGE_LAYER_T *il,
     DISPMANX_MODEINFO_T *info,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update);
 
 void
-addElementYUV420ImageLayerStretch(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerStretch(
+    IMAGE_LAYER_T *il,
     DISPMANX_MODEINFO_T *info,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update);
 
 void
-addElementYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayer(
+    IMAGE_LAYER_T *il,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update);
 
@@ -102,18 +107,26 @@ yuyvToYUV420ImageLayer(
     uint8_t *yuyv,
     int32_t width,
     int32_t height,
-    YUV420_IMAGE_LAYER_T *il);
+    IMAGE_LAYER_T *il);
 
 void
-changeSourceYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+jpegToRGB888ImageLayer(
+    uint8_t *jpeg,
+    size_t length,
+    int32_t width,
+    int32_t height,
+    IMAGE_LAYER_T *il);
+
+void
+changeSourceImageLayer(
+    IMAGE_LAYER_T *il,
     DISPMANX_UPDATE_HANDLE_T update);
 
 void
-changeSourceAndUpdateYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il);
+changeSourceAndUpdateImageLayer(
+    IMAGE_LAYER_T *il);
 
-void destroyYUV420ImageLayer(YUV420_IMAGE_LAYER_T *il);
+void destroyImageLayer(IMAGE_LAYER_T *il);
 
 //-------------------------------------------------------------------------
 

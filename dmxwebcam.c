@@ -55,8 +55,8 @@
 
 #include "backgroundLayer.h"
 #include "syslogUtilities.h"
-#include "yuv420Image.h"
-#include "yuv420ImageLayer.h"
+#include "image.h"
+#include "imageLayer.h"
 
 //-------------------------------------------------------------------------
 
@@ -129,16 +129,11 @@ signalHandler(
 //-------------------------------------------------------------------------
 
 bool
-initVideo(
+hasCapabilities(
     bool isDaemon,
     const char *program,
-    int fd,
-    int *width,
-    int *height, 
-    int fps)
+    int fd)
 {
-    //---------------------------------------------------------------------
-
     struct v4l2_capability cap;
 
     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == -1)
@@ -170,8 +165,57 @@ initVideo(
         return false;
     }
 
+    return true;
+}
+
+//-------------------------------------------------------------------------
+
+uint32_t
+chooseFormat(
+    bool isDaemon,
+    const char *program,
+    int fd)
+{
+    uint32_t format = 0;
+
     //---------------------------------------------------------------------
 
+    struct v4l2_fmtdesc fmtdesc;
+    memset(&fmtdesc, 0, sizeof(fmtdesc));
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+    for (fmtdesc.index = 0 ;
+         ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) == 0 ;
+         fmtdesc.index++)
+    {
+        if (format == 0)
+        {
+            if (fmtdesc.pixelformat == V4L2_PIX_FMT_YUYV)
+            {
+                format = V4L2_PIX_FMT_YUYV;
+            }
+        }
+        if (fmtdesc.pixelformat == V4L2_PIX_FMT_MJPEG)
+        {
+            format = V4L2_PIX_FMT_MJPEG;
+        }
+    }
+
+    return format;
+}
+
+//-------------------------------------------------------------------------
+
+bool
+initVideo(
+    bool isDaemon,
+    const char *program,
+    uint32_t format,
+    int fd,
+    int *width,
+    int *height,
+    int fps)
+{
     struct v4l2_format fmt;
 
     memset(&fmt, 0, sizeof(fmt));
@@ -179,8 +223,8 @@ initVideo(
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     fmt.fmt.pix.width = *width;
     fmt.fmt.pix.height = *height;
-    fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+    fmt.fmt.pix.field = V4L2_FIELD_ANY;
+    fmt.fmt.pix.pixelformat = format;
 
     if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1)
     {
@@ -191,9 +235,17 @@ initVideo(
         return false;
     }
 
+    if (fmt.fmt.pix.pixelformat != format)
+    {
+        perrorLog(isDaemon,
+                  program,
+                 "could not get required format from video device");
+
+        return false;
+    }
+
     if ((fmt.fmt.pix.width != *width) || (fmt.fmt.pix.height != *height))
     {
-        
         messageLog(
             isDaemon,
             program,
@@ -263,7 +315,7 @@ main(
     //---------------------------------------------------------------------
 
     static const char *sopts = "dD:f:FhH:p:s:v:W:";
-    static struct option lopts[] = 
+    static struct option lopts[] =
     {
         { "daemon", no_argument, NULL, 'd' },
         { "display", required_argument, NULL, 'D' },
@@ -394,7 +446,7 @@ main(
                 exit(EXIT_FAILURE);
             }
         }
-        
+
         if (daemon(0, 0) == -1)
         {
             fprintf(stderr, "Cannot daemonize\n");
@@ -470,7 +522,7 @@ main(
 
     //---------------------------------------------------------------------
 
-    if (initVideo(isDaemon, program, vfd, &width, &height, fps) == false)
+    if (hasCapabilities(isDaemon, program, vfd) == false)
     {
         close(vfd);
 
@@ -479,10 +531,47 @@ main(
 
     //---------------------------------------------------------------------
 
-    YUV420_IMAGE_LAYER_T imageLayer;
+    uint32_t format = chooseFormat(isDaemon, program, vfd);
 
-    initYUV420ImageLayer(&imageLayer, width, height);
-    createResourceYUV420ImageLayer(&imageLayer, 1);
+    if (format == 0)
+    {
+        close(vfd);
+
+        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+    }
+
+    //---------------------------------------------------------------------
+
+    if (initVideo(isDaemon, program, format, vfd, &width, &height, fps) == false)
+    {
+        close(vfd);
+
+        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+    }
+
+    //---------------------------------------------------------------------
+
+    IMAGE_LAYER_T imageLayer;
+
+    if (format == V4L2_PIX_FMT_YUYV)
+    {
+        initImageLayer(&imageLayer, width, height, VC_IMAGE_YUV420);
+    }
+    else if (format == V4L2_PIX_FMT_MJPEG)
+    {
+        initImageLayer(&imageLayer, width, height, VC_IMAGE_RGB888);
+    }
+    else
+    {
+        messageLog(isDaemon,
+                   program,
+                   LOG_ERR,
+                   "unknown image format %d",
+                   format);
+        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+    }
+
+    createResourceImageLayer(&imageLayer, 1);
 
     //---------------------------------------------------------------------
 
@@ -501,22 +590,24 @@ main(
 
     if (fullscreen)
     {
-        addElementYUV420ImageLayerFullScreen(&imageLayer,
-                                             &info,
-                                             display,
-                                             update);
+        addElementImageLayerFullScreen(&imageLayer,
+                                       &info,
+                                       display,
+                                       update);
     }
     else if (stretch)
-        addElementYUV420ImageLayerStretch(&imageLayer,
-                                          &info,
-                                          display,
-                                          update);
+    {
+        addElementImageLayerStretch(&imageLayer,
+                                    &info,
+                                    display,
+                                    update);
+    }
     else
     {
-        addElementYUV420ImageLayerCentered(&imageLayer,
-                                           &info,
-                                           display,
-                                           update);
+        addElementImageLayerCentered(&imageLayer,
+                                     &info,
+                                     display,
+                                     update);
     }
 
     if (vc_dispmanx_update_submit_sync(update) != 0)
@@ -701,10 +792,18 @@ main(
 
         if ((frame % sample) == 0)
         {
-            uint8_t *yuyv = videoBuffers[buffer.index].buffer;
+            uint8_t *data = videoBuffers[buffer.index].buffer;
 
-            yuyvToYUV420ImageLayer(yuyv, width, height, &imageLayer);
-            changeSourceAndUpdateYUV420ImageLayer(&imageLayer);
+            if (format == V4L2_PIX_FMT_YUYV)
+            {
+                yuyvToYUV420ImageLayer(data, width, height, &imageLayer);
+            }
+            else if (format == V4L2_PIX_FMT_MJPEG)
+            {
+                jpegToRGB888ImageLayer(data, buffer.length, width, height, &imageLayer);
+            }
+
+            changeSourceAndUpdateImageLayer(&imageLayer);
         }
 
         ++frame;
@@ -740,7 +839,7 @@ main(
     //---------------------------------------------------------------------
 
     destroyBackgroundLayer(&bg);
-    destroyYUV420ImageLayer(&imageLayer);
+    destroyImageLayer(&imageLayer);
 
     //---------------------------------------------------------------------
 

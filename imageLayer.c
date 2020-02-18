@@ -29,8 +29,8 @@
 #include <stdbool.h>
 
 #include "element_change.h"
-#include "yuv420Image.h"
-#include "yuv420ImageLayer.h"
+#include "image.h"
+#include "imageLayer.h"
 
 //-------------------------------------------------------------------------
 
@@ -40,20 +40,30 @@
 
 //-------------------------------------------------------------------------
 
-void
-initYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+bool
+initImageLayer(
+    IMAGE_LAYER_T *il,
     int32_t width,
-    int32_t height)
+    int32_t height,
+    VC_IMAGE_TYPE_T type)
 {
-    initYUV420Image(&(il->image), width, height);
+    return initImage(&(il->image), type, width, height);
+}
+
+//-------------------------------------------------------------------------
+
+VC_IMAGE_TYPE_T
+imageLayerType(
+    IMAGE_LAYER_T *il)
+{
+    return il->image.type;
 }
 
 //-------------------------------------------------------------------------
 
 void
-createResourceYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+createResourceImageLayer(
+    IMAGE_LAYER_T *il,
     int32_t layer)
 {
     uint32_t vc_image_ptr;
@@ -62,7 +72,7 @@ createResourceYUV420ImageLayer(
 
     il->frontResource =
         vc_dispmanx_resource_create(
-            VC_IMAGE_YUV420,
+            il->image.type,
             il->image.width | (il->image.pitch << 16),
             il->image.height | (il->image.alignedHeight << 16),
             &vc_image_ptr);
@@ -70,7 +80,7 @@ createResourceYUV420ImageLayer(
 
     il->backResource =
         vc_dispmanx_resource_create(
-            VC_IMAGE_YUV420,
+            il->image.type,
             il->image.width | (il->image.pitch << 16),
             il->image.height | (il->image.alignedHeight << 16),
             &vc_image_ptr);
@@ -78,14 +88,36 @@ createResourceYUV420ImageLayer(
 
     //---------------------------------------------------------------------
 
-    vc_dispmanx_rect_set(&(il->bmpRect),
-                         0,
-                         0,
-                         il->image.width,
-                         (3 * il->image.alignedHeight) / 2);
+    switch (il->image.type)
+    {
+    case VC_IMAGE_RGB888:
+
+
+        vc_dispmanx_rect_set(&(il->bmpRect),
+                             0,
+                             0,
+                             il->image.width,
+                             il->image.height);
+
+        break;
+
+    case VC_IMAGE_YUV420:
+
+        vc_dispmanx_rect_set(&(il->bmpRect),
+                             0,
+                             0,
+                             il->image.width,
+                             (3 * il->image.alignedHeight) / 2);
+
+        break;
+
+    default:
+
+        break;
+    }
 
     vc_dispmanx_resource_write_data(il->frontResource,
-                                    VC_IMAGE_YUV420,
+                                    il->image.type,
                                     il->image.pitch,
                                     il->image.buffer,
                                     &(il->bmpRect));
@@ -94,8 +126,8 @@ createResourceYUV420ImageLayer(
 //-------------------------------------------------------------------------
 
 void
-addElementYUV420ImageLayerOffset(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerOffset(
+    IMAGE_LAYER_T *il,
     int32_t xOffset,
     int32_t yOffset,
     DISPMANX_DISPLAY_HANDLE_T display,
@@ -113,14 +145,14 @@ addElementYUV420ImageLayerOffset(
                          il->image.width,
                          il->image.height);
 
-    addElementYUV420ImageLayer(il, display, update);
+    addElementImageLayer(il, display, update);
 }
 
 //-------------------------------------------------------------------------
 
 void
-addElementYUV420ImageLayerCentered(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerCentered(
+    IMAGE_LAYER_T *il,
     DISPMANX_MODEINFO_T *info,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update)
@@ -137,14 +169,14 @@ addElementYUV420ImageLayerCentered(
                          il->image.width,
                          il->image.height);
 
-    addElementYUV420ImageLayer(il, display, update);
+    addElementImageLayer(il, display, update);
 }
 
 //-------------------------------------------------------------------------
 
 void
-addElementYUV420ImageLayerFullScreen(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerFullScreen(
+    IMAGE_LAYER_T *il,
     DISPMANX_MODEINFO_T *info,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update)
@@ -175,14 +207,14 @@ addElementYUV420ImageLayerFullScreen(
                          dstWidth,
                          dstHeight);
 
-    addElementYUV420ImageLayer(il, display, update);
+    addElementImageLayer(il, display, update);
 }
 
 //-------------------------------------------------------------------------
 
 void
-addElementYUV420ImageLayerStretch(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayerStretch(
+    IMAGE_LAYER_T *il,
     DISPMANX_MODEINFO_T *info,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update)
@@ -194,19 +226,19 @@ addElementYUV420ImageLayerStretch(
                          il->image.height << 16);
 
     vc_dispmanx_rect_set(&(il->dstRect),
-		         0,
-			 0,
+                         0,
+                         0,
                          info->width,
                          info->height);
 
-    addElementYUV420ImageLayer(il, display, update);
+    addElementImageLayer(il, display, update);
 }
 
 //-------------------------------------------------------------------------
 
 void
-addElementYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+addElementImageLayer(
+    IMAGE_LAYER_T *il,
     DISPMANX_DISPLAY_HANDLE_T display,
     DISPMANX_UPDATE_HANDLE_T update)
 {
@@ -236,12 +268,12 @@ addElementYUV420ImageLayer(
 //-------------------------------------------------------------------------
 
 void
-changeSourceYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il,
+changeSourceImageLayer(
+    IMAGE_LAYER_T *il,
     DISPMANX_UPDATE_HANDLE_T update)
 {
     vc_dispmanx_resource_write_data(il->backResource,
-                                    VC_IMAGE_YUV420,
+                                    il->image.type,
                                     il->image.pitch,
                                     il->image.buffer,
                                     &(il->bmpRect));
@@ -262,7 +294,7 @@ yuyvToYUV420ImageLayer(
     uint8_t *yuyv,
     int32_t width,
     int32_t height,
-    YUV420_IMAGE_LAYER_T *il)
+    IMAGE_LAYER_T *il)
 {
     yuyvToYUV420Image(yuyv, width, height, &(il->image));
 }
@@ -270,11 +302,24 @@ yuyvToYUV420ImageLayer(
 //-------------------------------------------------------------------------
 
 void
-changeSourceAndUpdateYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il)
+jpegToRGB888ImageLayer(
+    uint8_t *jpeg,
+    size_t length,
+    int32_t width,
+    int32_t height,
+    IMAGE_LAYER_T *il)
+{
+    jpegToRGB888Image(jpeg, length, width, height, &(il->image));
+}
+
+//-------------------------------------------------------------------------
+
+void
+changeSourceAndUpdateImageLayer(
+    IMAGE_LAYER_T *il)
 {
     vc_dispmanx_resource_write_data(il->backResource,
-                                    VC_IMAGE_YUV420,
+                                    il->image.type,
                                     il->image.pitch,
                                     il->image.buffer,
                                     &(il->bmpRect));
@@ -295,8 +340,8 @@ changeSourceAndUpdateYUV420ImageLayer(
 //-------------------------------------------------------------------------
 
 void
-destroyYUV420ImageLayer(
-    YUV420_IMAGE_LAYER_T *il)
+destroyImageLayer(
+    IMAGE_LAYER_T *il)
 {
     DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
     vc_dispmanx_element_remove(update, il->element);
@@ -309,6 +354,6 @@ destroyYUV420ImageLayer(
 
     //---------------------------------------------------------------------
 
-    destroyYUV420Image(&(il->image));
+    destroyImage(&(il->image));
 }
 

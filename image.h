@@ -2,7 +2,7 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (c) 2015 Andrew Duncan
+// Copyright (c) 2020 Andrew Duncan
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the
@@ -25,19 +25,22 @@
 //
 //-------------------------------------------------------------------------
 
-#ifndef YUV420_IMAGE_H
-#define YUV420_IMAGE_H
+#ifndef IMAGE_H
+#define IMAGE_H
 
 //-------------------------------------------------------------------------
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#include "bcm_host.h"
     
 //-------------------------------------------------------------------------
 
 typedef struct
 {
+    VC_IMAGE_TYPE_T type;
     int32_t width;
     int32_t height;
     int32_t pitch;
@@ -46,30 +49,39 @@ typedef struct
     uint32_t size;
     uint8_t *buffer;
 }
-YUV420_IMAGE_T;
+IMAGE_T;
 
 //-------------------------------------------------------------------------
 
 bool
-initYUV420Image(
-    YUV420_IMAGE_T *image,
+initImage(
+    IMAGE_T *image,
+    VC_IMAGE_TYPE_T type,
     int32_t width,
     int32_t height);
 
 void
-clearYUV420Image(
-    YUV420_IMAGE_T *image);
+clearImage(
+    IMAGE_T *image);
 
 void
 yuyvToYUV420Image(
     uint8_t *yuyv,
     int32_t width,
     int32_t height,
-    YUV420_IMAGE_T *image);
+    IMAGE_T *image);
 
 void
-destroyYUV420Image(
-    YUV420_IMAGE_T *image);
+jpegToRGB888Image(
+    uint8_t *jpeg,
+    size_t length,
+    int32_t width,
+    int32_t height,
+    IMAGE_T *image);
+
+void
+destroyImage(
+    IMAGE_T *image);
 
 //-------------------------------------------------------------------------
 
