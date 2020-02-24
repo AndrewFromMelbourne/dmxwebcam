@@ -71,7 +71,7 @@ yuyvToYUV420Image(
     int32_t height,
     IMAGE_T *image);
 
-void
+bool
 jpegToRGB888Image(
     uint8_t *jpeg,
     size_t length,

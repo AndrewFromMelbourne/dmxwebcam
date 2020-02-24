@@ -17,7 +17,7 @@
 
 # build
 
-	sudo apt-get install libbsd-dev libjpeg-dev
+	sudo apt-get install libbsd-dev libturbojpeg-dev
 	cd dmxwebcam
 	mkdir build
 	cd build

@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <jpeglib.h>
+#include <turbojpeg.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -153,7 +153,7 @@ yuyvToYUV420Image(
 
 //-------------------------------------------------------------------------
 
-void
+bool
 jpegToRGB888Image(
     uint8_t *jpeg,
     size_t length,
@@ -161,26 +161,43 @@ jpegToRGB888Image(
     int32_t height,
     IMAGE_T *image)
 {
-    struct jpeg_decompress_struct cinfo;
-    struct jpeg_error_mgr jerr;
+    bool result = false;
+    tjhandle tjInstance = tjInitDecompress();
 
-    cinfo.err = jpeg_std_error(&jerr);
-    jpeg_create_decompress(&cinfo);
-    jpeg_mem_src(&cinfo, jpeg, length);
-    jpeg_read_header(&cinfo, TRUE);
-    jpeg_start_decompress(&cinfo);
+    if (tjInstance != NULL)
+    {
+        unsigned long jpegSize = length;
+        int jpegWidth = 0;
+        int jpegHeight = 0;
+        int jpegSubsamp = 0;
+        int jpegColorspace = 0;
 
-	int32_t j = 0;
-	uint8_t* line = image->buffer;
+        if (tjDecompressHeader3(tjInstance,
+                                jpeg,
+                                jpegSize,
+                                &jpegWidth,
+                                &jpegHeight,
+                                &jpegSubsamp,
+                                &jpegColorspace) >= 0)
+        {
+            if (tjDecompress2(tjInstance,
+                              jpeg,
+                              jpegSize,
+                              image->buffer,
+                              image->width,
+                              image->pitch,
+                              image->height,
+                              TJPF_RGB,
+                              TJFLAG_FASTDCT) >= 0)
+            {
+                result = true;
+            }
+        }
 
-	for (j = 0 ; j < cinfo.output_height ; j++)
-	{
-        jpeg_read_scanlines(&cinfo, &(line), 1);
-		line += image->pitch;
-	}
+        tjDestroy(tjInstance);
+    }
 
-    jpeg_finish_decompress(&cinfo);
-    jpeg_destroy_decompress(&cinfo);
+    return result;
 }
 
 //-------------------------------------------------------------------------

@@ -109,7 +109,7 @@ yuyvToYUV420ImageLayer(
     int32_t height,
     IMAGE_LAYER_T *il);
 
-void
+bool
 jpegToRGB888ImageLayer(
     uint8_t *jpeg,
     size_t length,

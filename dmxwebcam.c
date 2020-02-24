@@ -793,6 +793,7 @@ main(
         if ((frame % sample) == 0)
         {
             uint8_t *data = videoBuffers[buffer.index].buffer;
+            bool validFrame = true;
 
             if (format == V4L2_PIX_FMT_YUYV)
             {
@@ -800,10 +801,17 @@ main(
             }
             else if (format == V4L2_PIX_FMT_MJPEG)
             {
-                jpegToRGB888ImageLayer(data, buffer.length, width, height, &imageLayer);
+                validFrame = jpegToRGB888ImageLayer(data,
+                                                    buffer.length,
+                                                    width,
+                                                    height,
+                                                    &imageLayer);
             }
 
-            changeSourceAndUpdateImageLayer(&imageLayer);
+            if (validFrame)
+            {
+                changeSourceAndUpdateImageLayer(&imageLayer);
+            }
         }
 
         ++frame;
