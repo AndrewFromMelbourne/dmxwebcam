@@ -359,7 +359,7 @@ fpsSet(
     int fps)
 {
     bool settingSupported = true;
-    int result;
+    int result = 0;
 
     struct v4l2_streamparm streamparm;
     memset(&streamparm, 0, sizeof(streamparm));
