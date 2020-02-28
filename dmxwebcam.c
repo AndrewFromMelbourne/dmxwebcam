@@ -62,7 +62,7 @@
 
 #define DEFAULT_VIDEO_DEVICE "/dev/video0"
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_FPS 30
+#define DEFAULT_FPS 0
 #define DEFAULT_WIDTH 640
 #define DEFAULT_HEIGHT 480
 #define NUMBER_OF_BUFFERS_TO_REQUEST 4
@@ -75,6 +75,12 @@ typedef struct
     uint8_t *buffer;
 }
 VIDEO_BUFFER_T;
+
+typedef struct
+{
+    uint32_t width;
+    uint32_t height;
+} FRAME_SIZE_T;
 
 //-------------------------------------------------------------------------
 
@@ -93,8 +99,8 @@ printUsage(
     fprintf(fp, "    --daemon - start in the background as a daemon\n");
     fprintf(fp, "    --display <number> - Raspberry Pi display number");
     fprintf(fp, " (default %d)\n", DEFAULT_DISPLAY_NUMBER);
-    fprintf(fp, "    --fps <fps> - set desired frames per second");
-    fprintf(fp, " (default %d frames per second)\n", DEFAULT_FPS);
+    fprintf(fp, "    --fps <fps> - set desired frames per second\n");
+    fprintf(fp, "    --bestfit - choose width/height based on screen size\n");
     fprintf(fp, "    --fullscreen - show full screen\n");
     fprintf(fp, "    --stretch - show full screen and stretch\n");
     fprintf(fp, "    --pidfile <pidfile> - create and lock PID file");
@@ -172,8 +178,7 @@ hasCapabilities(
 
 uint32_t
 chooseFormat(
-    bool isDaemon,
-    const char *program,
+    char *description,
     int fd)
 {
     uint32_t format = 0;
@@ -193,15 +198,99 @@ chooseFormat(
             if (fmtdesc.pixelformat == V4L2_PIX_FMT_YUYV)
             {
                 format = V4L2_PIX_FMT_YUYV;
+
+                if (description != NULL)
+                {
+                    strcpy(description, (char*)fmtdesc.description);
+                }
             }
         }
         if (fmtdesc.pixelformat == V4L2_PIX_FMT_MJPEG)
         {
             format = V4L2_PIX_FMT_MJPEG;
+
+            if (description != NULL)
+            {
+                strcpy(description, (char*)fmtdesc.description);
+            }
         }
     }
 
     return format;
+}
+
+//-------------------------------------------------------------------------
+
+static int compareFrameSize(const void* p1, const void* p2)
+{
+    FRAME_SIZE_T* pf1 = (FRAME_SIZE_T*)(p1);
+    FRAME_SIZE_T* pf2 = (FRAME_SIZE_T*)(p2);
+
+    if (pf1->width > pf2->width)
+    {
+        return -1;
+    }
+    else if (pf1->width < pf2->width)
+    {
+        return 1;
+    }
+    else if (pf1->height > pf2->height)
+    {
+        return -1;
+    }
+    else if (pf1->height < pf2->height)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+//-------------------------------------------------------------------------
+
+FRAME_SIZE_T
+chooseBestFitDimensions(
+    uint32_t format,
+    DISPMANX_MODEINFO_T* info,
+    int fd)
+{
+    FRAME_SIZE_T frameSizes[64];
+    size_t maxFrameSizes = (sizeof(frameSizes)/sizeof(frameSizes[0]));
+    memset(&frameSizes, 0, sizeof(frameSizes));
+
+    struct v4l2_frmsizeenum frmsize;
+    memset(&frmsize, 0, sizeof(frmsize));
+    frmsize.pixel_format = format;
+
+    size_t index = 0;
+
+    while (ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) == 0)
+    {
+        if ((frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE) &&
+            (index < maxFrameSizes))
+        {
+            frameSizes[index].width = frmsize.discrete.width;
+            frameSizes[index].height = frmsize.discrete.height;
+            ++index;
+        }
+        ++frmsize.index;
+    }
+
+    qsort(&frameSizes[0], index, sizeof(FRAME_SIZE_T), compareFrameSize);
+
+    size_t i = 0;
+    size_t found = 0;
+    for (i = 0 ; i < index ; i++)
+    {
+        if ((frameSizes[i].width < info->width) &&
+            (frameSizes[i].height < info->height))
+        {
+            found = i;
+            break;
+        }
+    }
+
+    return frameSizes[found];
 }
 
 //-------------------------------------------------------------------------
@@ -213,8 +302,7 @@ initVideo(
     uint32_t format,
     int fd,
     int *width,
-    int *height,
-    int fps)
+    int *height)
 {
     struct v4l2_format fmt;
 
@@ -246,42 +334,100 @@ initVideo(
 
     if ((fmt.fmt.pix.width != *width) || (fmt.fmt.pix.height != *height))
     {
-        messageLog(
-            isDaemon,
-            program,
-            LOG_INFO,
-            "video dimension %dx%d -> %dx%d",
-            *width,
-            *height,
-            fmt.fmt.pix.width,
-            fmt.fmt.pix.height);
+        messageLog(isDaemon,
+                   program,
+                   LOG_INFO,
+                   "video dimension %dx%d -> %dx%d",
+                   *width,
+                   *height,
+                   fmt.fmt.pix.width,
+                   fmt.fmt.pix.height);
 
         *width = fmt.fmt.pix.width;
         *height = fmt.fmt.pix.height;
     }
 
-    //---------------------------------------------------------------------
+    return true;
+}
 
-    if (fps > 0)
+int
+fpsSet(
+    bool isDaemon,
+    const char *program,
+    uint32_t format,
+    int fd,
+    int fps)
+{
+    bool settingSupported = true;
+    int result;
+
+    struct v4l2_streamparm streamparm;
+    memset(&streamparm, 0, sizeof(streamparm));
+    streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+    if (ioctl(fd, VIDIOC_G_PARM, &streamparm) == -1)
     {
-        struct v4l2_streamparm streamparm;
+        settingSupported = false;
+        messageLog(isDaemon,
+                   program,
+                   LOG_ERR,
+                   "unable to get fps settings");
+    }
 
-        memset(&streamparm, 0, sizeof(streamparm));
+    if (fps <= 0)
+    {
+        messageLog(isDaemon,
+                   program,
+                   LOG_INFO,
+                   "video fps %d/%d",
+                   streamparm.parm.capture.timeperframe.numerator,
+                   streamparm.parm.capture.timeperframe.denominator);
 
-        streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        streamparm.parm.capture.timeperframe.numerator = 1;
-        streamparm.parm.capture.timeperframe.denominator = fps;
-
-        if (ioctl(fd, VIDIOC_S_PARM, &streamparm) == -1)
+        result = streamparm.parm.capture.timeperframe.denominator /
+                 streamparm.parm.capture.timeperframe.numerator;
+    }
+    else
+    {
+        if (settingSupported &&
+           ((streamparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) == 0))
         {
+            settingSupported = false;
             messageLog(isDaemon,
                        program,
                        LOG_ERR,
-                       "unable to set requested fps (%d)", fps);
+                       "settings fps not supported by device");
+        }
+
+        if (settingSupported)
+        {
+            streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            streamparm.parm.capture.timeperframe.numerator = 1;
+            streamparm.parm.capture.timeperframe.denominator = fps;
+
+            if (ioctl(fd, VIDIOC_S_PARM, &streamparm) == -1)
+            {
+                messageLog(isDaemon,
+                           program,
+                           LOG_ERR,
+                           "unable to set requested fps (%d)", fps);
+            }
+            else
+            {
+                messageLog(isDaemon,
+                           program,
+                           LOG_INFO,
+                           "video fps 1/%d -> %d/%d",
+                           fps,
+                           streamparm.parm.capture.timeperframe.numerator,
+                           streamparm.parm.capture.timeperframe.denominator);
+
+                result = streamparm.parm.capture.timeperframe.denominator /
+                         streamparm.parm.capture.timeperframe.numerator;
+            }
         }
     }
 
-    return true;
+    return result;
 }
 
 //-------------------------------------------------------------------------
@@ -297,7 +443,6 @@ main(
     int height = DEFAULT_HEIGHT;
 
     int fps = DEFAULT_FPS;
-    suseconds_t frameDuration =  1000000 / fps;
 
     uint8_t sample = 1;
 
@@ -305,8 +450,8 @@ main(
     const char *pidfile = NULL;
 
     bool fullscreen = false;
-
     bool stretch = false;
+    bool bestfit = false;
 
     const char *vdevice = DEFAULT_VIDEO_DEVICE;
 
@@ -314,9 +459,10 @@ main(
 
     //---------------------------------------------------------------------
 
-    static const char *sopts = "dD:f:FhH:p:s:v:W:";
+    static const char *sopts = "BdD:f:FhH:p:s:v:W:";
     static struct option lopts[] =
     {
+        { "bestfit", no_argument, NULL, 'B' },
         { "daemon", no_argument, NULL, 'd' },
         { "display", required_argument, NULL, 'D' },
         { "fps", required_argument, NULL, 'f' },
@@ -337,6 +483,11 @@ main(
     {
         switch (opt)
         {
+        case 'B':
+
+            bestfit = true;
+            break;
+
         case 'd':
 
             isDaemon = true;
@@ -345,15 +496,6 @@ main(
         case 'f':
 
             fps = atoi(optarg);
-
-            if (fps > 0)
-            {
-                frameDuration = 1000000 / fps;
-            }
-            else
-            {
-                fps = 1000000 / frameDuration;
-            }
 
             break;
 
@@ -525,29 +667,56 @@ main(
     if (hasCapabilities(isDaemon, program, vfd) == false)
     {
         close(vfd);
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     //---------------------------------------------------------------------
 
-    uint32_t format = chooseFormat(isDaemon, program, vfd);
+    char description[32];
+    uint32_t format = chooseFormat(description, vfd);
 
     if (format == 0)
     {
         close(vfd);
+        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+    }
 
+    messageLog(isDaemon,
+               program,
+               LOG_INFO,
+               "video format is %s",
+               description);
+
+    //---------------------------------------------------------------------
+
+    if (bestfit)
+    {
+        FRAME_SIZE_T frameSize = chooseBestFitDimensions(format, &info, vfd);
+        width = frameSize.width;
+        height = frameSize.height;
+
+        messageLog(isDaemon,
+                   program,
+                   LOG_INFO,
+                   "video best fit %dx%d -> %dx%d",
+                   width,
+                   height,
+                   info.width,
+                   info.height);
+    }
+
+    //---------------------------------------------------------------------
+
+    if (initVideo(isDaemon, program, format, vfd, &width, &height) == false)
+    {
+        close(vfd);
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     //---------------------------------------------------------------------
 
-    if (initVideo(isDaemon, program, format, vfd, &width, &height, fps) == false)
-    {
-        close(vfd);
-
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
-    }
+    fps = fpsSet(isDaemon, program, format, vfd, fps);
+    suseconds_t frameDuration = (fps > 0) ? 1000000 / fps : 0;
 
     //---------------------------------------------------------------------
 
@@ -566,8 +735,8 @@ main(
         messageLog(isDaemon,
                    program,
                    LOG_ERR,
-                   "unknown image format %d",
-                   format);
+                   "unknown image format %s",
+                   description);
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -644,7 +813,6 @@ main(
         }
 
         close(vfd);
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -655,7 +823,6 @@ main(
                    LOG_ERR,
                    "insufficient buffer memory on video device");
         close(vfd);
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -685,7 +852,6 @@ main(
                 "could not map video buffers");
 
             close(vfd);
-
             exitAndRemovePidFile(EXIT_FAILURE, pfh);
         }
 
@@ -705,7 +871,6 @@ main(
                 "video buffer memory map failed");
 
             close(vfd);
-
             exitAndRemovePidFile(EXIT_FAILURE, pfh);
         }
     }
@@ -732,7 +897,6 @@ main(
                 "could not enqueue video buffers");
 
             close(vfd);
-
             exitAndRemovePidFile(EXIT_FAILURE, pfh);
         }
     }
@@ -749,7 +913,6 @@ main(
             "could not start video capture");
 
         close(vfd);
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -784,7 +947,6 @@ main(
                 "could not dequeue video buffers");
 
             close(vfd);
-
             exitAndRemovePidFile(EXIT_FAILURE, pfh);
         }
 
@@ -826,7 +988,6 @@ main(
                 "could not enqueue video buffers");
 
             close(vfd);
-
             exitAndRemovePidFile(EXIT_FAILURE, pfh);
         }
 

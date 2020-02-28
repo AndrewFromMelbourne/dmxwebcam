@@ -6,7 +6,8 @@
 
 	--daemon - start in the background as a daemon
 	--display <number> - Raspberry Pi display number (default 0)
-	--fps <fps> - set desired frames per second (default 30 frames per second)
+	--fps <fps> - set desired frames per second
+	--bestfit - choose width/height based on screen size
 	--fullscreen - show full screen
 	--pidfile <pidfile> - create and lock PID file (if being run as a daemon)
 	--sample <value> - only display every value frame)
@@ -23,4 +24,10 @@
 	cd build
 	cmake ..
 	make
+
+# TODO
+
+    * Optimize MJPEG decoding
+	* Use MMAL for JPEG decode and conversion from YUYV to YUV420
+	* Add other pixel formats
 
