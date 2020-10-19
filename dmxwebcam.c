@@ -62,6 +62,7 @@
 
 #define DEFAULT_VIDEO_DEVICE "/dev/video0"
 #define DEFAULT_DISPLAY_NUMBER 0
+#define DEFAULT_LAYER_NUMBER 0
 #define DEFAULT_FPS 0
 #define DEFAULT_WIDTH 640
 #define DEFAULT_HEIGHT 480
@@ -112,6 +113,8 @@ printUsage(
     fprintf(fp, " (default %d)\n", DEFAULT_HEIGHT);
     fprintf(fp, "    --videodevice <device> - video device for webcam");
     fprintf(fp, " (default %s)\n", DEFAULT_VIDEO_DEVICE);
+    fprintf(fp, "    --layer <number> - set video render layer number (higher numbers are on top)");
+    fprintf(fp, " (default %d)\n", DEFAULT_LAYER_NUMBER);    
     fprintf(fp, "    --help - print usage and exit\n");
     fprintf(fp, "\n");
 }
@@ -445,6 +448,7 @@ main(
     int fps = DEFAULT_FPS;
 
     uint8_t sample = 1;
+    uint8_t layer = DEFAULT_LAYER_NUMBER;
 
     bool isDaemon =  false;
     const char *pidfile = NULL;
@@ -473,6 +477,7 @@ main(
         { "sample", required_argument, NULL, 's' },
         { "stretch", no_argument, NULL, 'S' },
         { "videodevice", required_argument, NULL, 'v' },
+        { "layer", required_argument, NULL, 'l' },
         { "width", required_argument, NULL, 'W' },
         { NULL, no_argument, NULL, 0 }
     };
@@ -538,6 +543,17 @@ main(
         case 'v':
 
             vdevice = optarg;
+
+            break;
+
+        case 'l':
+
+            layer = atoi(optarg);
+            
+            if (layer < 0)
+            {
+                layer = DEFAULT_LAYER_NUMBER;
+            }
 
             break;
 
@@ -649,7 +665,7 @@ main(
     //---------------------------------------------------------------------
 
     BACKGROUND_LAYER_T bg;
-    initBackgroundLayer(&bg, 0x000F, 0);
+    initBackgroundLayer(&bg, 0x000F, layer);
 
     //---------------------------------------------------------------------
 
@@ -740,7 +756,7 @@ main(
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
-    createResourceImageLayer(&imageLayer, 1);
+    createResourceImageLayer(&imageLayer, layer+1);
 
     //---------------------------------------------------------------------
 
